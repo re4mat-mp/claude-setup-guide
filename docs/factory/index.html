@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The factory: how a heavy job runs with Claude Code agents</title>
+<meta name="description" content="A small script cuts a big job into packets, worker agents read them in parallel, and code checks every answer before anything leaves the line. The models read and judge; the code counts and certifies. Example job, invented numbers.">
+<script src="kit.js"></script>
+<style>
+  html,body{margin:0;background:#F1F2F4;color:#15171C;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,Roboto,sans-serif;overflow-x:hidden}
+  #frame{position:relative;width:1280px;height:720px;max-width:100%;margin:0 auto;overflow:hidden}
+  #fit{position:absolute;left:0;top:0;transform-origin:0 0}
+  /* funnel: the three numbers that must land in 5 seconds */
+  .funnel{left:156px;top:140px;display:flex;align-items:center;gap:12px}
+  .fchip{border:2.5px solid var(--ink);border-radius:12px;background:#fff;box-shadow:4px 4px 0 var(--ink);padding:4px 14px 6px;display:flex;align-items:baseline;gap:8px}
+  .fchip b{font-size:34px;font-weight:900;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+  .fchip span{font-size:14px;font-weight:650;color:var(--ink2)}
+  .fchip.lit{background:var(--acc-l)}
+  .farrow{font-size:28px;font-weight:900}
+  /* station tags: name + one number */
+  .tag{position:absolute;top:238px;width:156px;box-sizing:border-box;text-align:center;background:#fff;border:2px solid var(--ink);border-radius:8px;
+    box-shadow:3px 3px 0 var(--ink);padding:3px 6px 5px;cursor:pointer}
+  .tag .n{font-family:var(--mono);font-size:13px;font-weight:800}
+  .tag .v{font-size:16px;white-space:nowrap;font-weight:900;line-height:1.1}
+  .tag .k{font-size:10px;font-weight:800;letter-spacing:.06em;color:var(--ink3)}
+  .plus{position:absolute;right:-9px;top:-9px;width:18px;height:18px;border-radius:9px;background:var(--ink);color:#fff;font-size:14px;font-weight:900;line-height:18px;text-align:center}
+  .tag.on{background:var(--acc-l)}
+  .hit{position:absolute;top:286px;height:200px;cursor:pointer}
+  /* bottom */
+  #say{left:40px;top:618px;width:820px;box-sizing:border-box;min-height:50px}
+  .job{left:892px;top:622px;width:348px;border-radius:12px;background:var(--ink);color:#fff;padding:8px 14px 9px;box-sizing:border-box;box-shadow:4px 4px 0 #8C929C}
+  .job .k{font-size:11.5px;font-weight:800;letter-spacing:.06em;color:#B9BEC7}
+  .job .w{font-size:15.5px;font-weight:800;line-height:1.3;margin-top:2px}
+  .job .tot{font-size:12.5px;color:#D3D7DD;margin-top:3px}
+  .job .tot b{font-family:var(--mono);color:#fff}
+  .chute{left:472px;top:498px;width:166px;font-size:11.5px;line-height:1.25;color:var(--ink2);text-align:center}
+  .chute b{color:var(--ink)}
+  .btns{right:40px;top:146px;display:flex;flex-direction:column;gap:8px;align-items:flex-end}
+  .btn{border:2px solid var(--ink);border-radius:20px;background:#fff;box-shadow:3px 3px 0 var(--ink);padding:4px 12px;font-size:13px;font-weight:750;cursor:pointer;color:var(--ink);text-decoration:none}
+  .hint{right:40px;top:214px;font-size:12px;color:var(--ink3);text-align:right}
+  .still .plus,.still .hint,.still .btns{display:none !important}
+  /* panel */
+  #veil{position:absolute;left:0;top:0;width:1280px;height:720px;background:rgba(241,242,244,.85);display:none;z-index:20}
+  #panel{position:absolute;left:190px;top:130px;width:900px;z-index:21;display:none;border:3px solid var(--ink);border-radius:16px;background:#fff;
+    box-shadow:7px 7px 0 var(--ink);padding:18px 22px 18px 22px;box-sizing:border-box}
+  #panel .top{display:flex;gap:18px;align-items:flex-start}
+  #panel .ic{flex:0 0 110px;height:110px;border:2.5px solid var(--ink);border-radius:12px}
+  #panel h2{margin:0;font-size:25px;font-weight:900;letter-spacing:-.01em;padding-right:40px}
+  #panel h2 code{font-family:var(--mono);font-size:19px;background:var(--acc-l);border:2px solid var(--ink);border-radius:6px;padding:0 6px;margin-right:8px}
+  #panel .kind{font-size:12.5px;font-weight:800;color:var(--ink3);letter-spacing:.05em;margin-top:3px;text-transform:uppercase}
+  #panel p{margin:10px 0 0;font-size:16px;line-height:1.42;color:var(--ink2)}
+  #panel p b{color:var(--ink)}
+  #panel code{font-family:var(--mono);font-size:14px;font-weight:700;color:var(--ink)}
+  #panel .def{background:var(--pale);border-left:5px solid var(--ink);padding:6px 10px;margin-top:10px;font-size:15.5px;line-height:1.4}
+  #panel .nums{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+  #panel .nums span{border:2px solid var(--ink);border-radius:8px;padding:3px 9px;font-size:14.5px;font-weight:650;background:#fff}
+  #panel .nums span b{font-size:17px;font-weight:900}
+  #panel .x{position:absolute;right:12px;top:10px;width:34px;height:34px;border:2.5px solid var(--ink);border-radius:17px;background:#fff;font-size:20px;font-weight:900;line-height:28px;text-align:center;cursor:pointer}
+  #panel .src{margin-top:12px;font-size:12px;color:var(--ink4);font-family:var(--mono)}
+  #panel .small{font-size:13.5px;color:var(--ink3)}
+  #panel .gl{display:grid;grid-template-columns:1fr 1fr;gap:10px 22px;margin-top:12px}
+  #panel .gl div{font-size:14.5px;line-height:1.35;color:var(--ink2);display:flex;gap:10px;align-items:flex-start}
+  #panel .gl svg{flex:0 0 40px}
+  /* the text version: plain HTML, readable with JavaScript off */
+  #text{max-width:720px;margin:0 auto;padding:28px 20px 48px;box-sizing:border-box;font-size:16px;line-height:1.55;color:#3D424C}
+  #text h2{font-size:20px;color:#15171C;margin:0 0 4px}
+  #text .lead{font-size:13px;color:#5F6672;margin:0 0 14px}
+  #text ol{padding-left:22px;margin:10px 0}
+  #text li{margin-bottom:6px}
+  #text b,#text strong{color:#15171C}
+  #text code{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:14px}
+  #text a{color:#15171C;text-decoration-color:#6A4CF5;text-decoration-thickness:2px;text-underline-offset:3px}
+  #text nav{display:flex;flex-wrap:wrap;gap:8px 22px;margin-top:18px;font-weight:700}
+  #text .ex{display:inline-block;background:#E7E9ED;border-radius:4px;padding:0 6px;font-size:13px;font-weight:700;color:#15171C}
+</style>
+<noscript><style>#frame{display:none}</style></noscript>
+</head>
+<body>
+<div id="frame"><div id="fit"><div id="stage" class="tone">
+  <div class="abs badge tone-acc" style="font-size:40px;flex-direction:column;line-height:1"><span>工場</span><span style="font-size:11px;font-weight:800;letter-spacing:.06em;margin-top:6px">FACTORY</span></div>
+  <div class="abs kicker">THE FACTORY · how a heavy job runs · example job, invented numbers</div>
+  <h1 class="abs head">The models <b>read and judge</b>.<br>The code <b>counts and certifies</b>.</h1>
+  <div class="abs rule ink"><div class="k">HOW TO READ IT</div><b>Round</b> = models: they read and judge.<br><b>Square</b> = code: it cuts, checks and counts.<br><span style="font-size:12px;color:var(--ink3)">Hat letter = model: S Sonnet · O Opus</span></div>
+
+  <div class="abs funnel">
+    <div class="fchip" id="f1"><b>420</b><span>notes read</span></div><div class="farrow">→</div>
+    <div class="fchip" id="f2"><b>31</b><span>decisions found</span></div><div class="farrow">→</div>
+    <div class="fchip" id="f3"><b>18</b><span>nobody wrote down</span></div>
+  </div>
+  <div class="abs btns">
+    <div class="btn" data-p="who">who's who?</div>
+    <a class="btn" href="../">← open the box</a>
+  </div>
+
+  <div id="tags"></div>
+  <svg id="scene" class="abs" width="1280" height="720" viewBox="0 0 1280 720" style="left:0;top:0;pointer-events:none"></svg>
+  <div class="abs chute"><b>332 had no decision</b><br>they never reach the judge</div>
+  <div id="hits"></div>
+
+  <div class="abs hint">click a station (or the <b>+</b>) for the detail</div>
+  <div id="say" class="bub"></div>
+  <div class="abs job">
+    <div class="k">EXAMPLE JOB · INVENTED NUMBERS</div>
+    <div class="w">Read 420 meeting notes.<br>Find the decisions nobody wrote down.</div>
+    <div class="tot">numbers a model wrote: <b>0</b> · step: <span id="step">cut</span></div>
+  </div>
+
+  <div id="veil"></div>
+  <div id="panel"><div class="x" id="px">×</div><div id="pbody"></div></div>
+</div></div></div>
+
+<section id="text" aria-labelledby="tv">
+  <noscript><p><strong>The factory: how a heavy job runs.</strong> The animation needs JavaScript; this is the same picture in words.</p></noscript>
+  <h2 id="tv">Text version</h2>
+  <p class="lead">What the picture shows, for people and for AI. <span class="ex">Example job, invented numbers.</span> The pattern is from the guide's README, section "Agents: one craft each".</p>
+  <p>When a job is too big for one agent, it runs like a production line. One rule holds it together: <strong>the models read and judge, the code counts and certifies.</strong> A number in the report is never one a model wrote from memory.</p>
+  <p>In the picture, round characters are models and square ones are code. The example job: read 420 meeting notes and find the decisions nobody wrote down.</p>
+  <ol>
+    <li><b>Cut (code).</b> A small script is the foreman. It reads nothing: it cuts the 420 notes into 7 packets of 60.</li>
+    <li><b>Read (models).</b> Seven worker agents read their packets in parallel and mark every note: a decision was made here, or none. Code checks each answer before it is accepted; 7 of 7 pass.</li>
+    <li><b>Sort (code).</b> 332 notes had no decision and stop there. Only 88 go on.</li>
+    <li><b>Judge (model).</b> One judge groups the 88 notes into decisions. It has one order: write no numbers.</li>
+    <li><b>Check (code).</b> A gate checks the judge's answer: every note it cites exists, and every quote is really in its note. It passes. If it failed, nothing would leave the line.</li>
+    <li><b>Count (code).</b> Code counts 31 decisions, finds 18 that are in no written list, and writes the report. Numbers written by a model: 0.</li>
+  </ol>
+  <p>Why code does the counting: in a real case from the guide, a model judge reported 29 items and a script re-counted 17. The script was right.</p>
+  <nav><a href="../">← Open the box</a><a href="https://github.com/re4mat-mp/claude-setup-guide">The guide on GitHub (README)</a></nav>
+</section>
+
+<script>
+KIT.injectCSS(); KIT.fit();
+const {INK,ACC,ACC_L,PALE,GREY,MID,WOOD,SANS,packet,worker,judge,bot,machine,stamper,sfxSvg,ease,clamp}=KIT;
+const CX=[150,420,690,895,1105];
+const BELT=452, L=26;
+
+// ---- every number on this page is an invented example; the pattern is README "Heavy jobs run like a production line"
+const ST=[
+ {id:'cut',   v:'7 packets',    k:'CODE',   hw:160},
+ {id:'read',  v:'7 of 7 ✓',     k:'MODELS', hw:300},
+ {id:'judge', v:'88 notes in',  k:'MODEL',  hw:160},
+ {id:'check', v:'PASS',         k:'CODE',   hw:160},
+ {id:'count', v:'18 unwritten', k:'CODE',   hw:160},
+];
+const SRC='pattern: the guide\'s README, "Heavy jobs run like a production line" · numbers: example job, invented';
+const mini=(svg,vb='-40 -50 80 100')=>`<svg viewBox="${vb}" width="100%" height="100%">${svg}</svg>`;
+const scissors=(x,y,o=0)=>`<g transform="translate(${x},${y})"><path d="M-12,-8 L10,${(4*o).toFixed(1)} M-12,8 L10,${(-4*o).toFixed(1)}" stroke="${INK}" stroke-width="3" stroke-linecap="round"/><circle cx="-15" cy="-9" r="5" fill="none" stroke="${INK}" stroke-width="2.4"/><circle cx="-15" cy="9" r="5" fill="none" stroke="${INK}" stroke-width="2.4"/></g>`;
+const sheet=(x,y,s=1)=>`<g transform="translate(${x},${y}) scale(${s})"><rect x="-16" y="-20" width="32" height="40" rx="2" fill="#fff" stroke="${INK}" stroke-width="2.4"/><path d="M-10,-10 h20 M-10,-3 h20 M-10,4 h14 M-10,11 h17" stroke="${MID}" stroke-width="2"/></g>`;
+const PANELS={
+ cut:{t:'cut',name:'the foreman cuts the job',kind:'Code · a small script, no model',ic:()=>mini(machine(-30,-30,60,56,{digits:'7×60'})+scissors(4,-16,0.6)),
+  def:'<b>packet</b> = a slice of the job, small enough for one worker to read well.',
+  body:`<p>The foreman is <b>a small script, not a model</b>. It reads nothing. It cuts the work into packets, hands them out, and checks what comes back.</p>`,
+  nums:['<b>420</b> meeting notes in','<b>7</b> packets of <b>60</b>']},
+ read:{t:'read',name:'the workers read, in parallel',kind:'Models · 7 worker agents (Sonnet)',ic:()=>mini(worker(0,-12,0,{s:1.5,pose:'read'})),
+  def:'<b>worker</b> = a sub-agent: a second Claude with its own instructions and a fresh context. Here it only reads.',
+  body:`<p>Each worker reads its packet and marks every note: <b>a decision was made here</b>, or none. Then <b>code checks each answer</b> before it is accepted: one row per note, every note id real. A worker that fails gets its packet back.</p>`,
+  nums:['<b>7 of 7</b> answers pass the check','<b>88</b> notes with a decision','<b>332</b> with none']},
+ judge:{t:'judge',name:'the judge groups, and writes no numbers',kind:'Model · 1 judge (Opus)',ic:()=>mini(judge(0,-8,0,{s:1.4,hit:0.2})),
+  def:'<b>judge</b> = the agent that groups the marked notes into decisions.',
+  body:`<p>Only the 88 notes with a decision reach it. It has one order: <b>write no numbers</b>. The code counts afterwards, so no number comes from a model's memory.</p>`,
+  nums:['<b>88</b> notes in','numbers written: <b>0</b>']},
+ check:{t:'check',name:'the gate',kind:'Code · before anything leaves',ic:()=>mini(stamper(0,40,0,{s:1.1,hit:1})),
+  def:'<b>gate</b> = code that checks the judge\'s answer. If it fails, <b>nothing leaves the line</b>.',
+  body:`<p>It checks that every note the judge cites exists, and that every quote is really in its note. Here it passes, and the decisions go on, certified.</p>`,
+  nums:['<b>PASS</b>','every cited note exists','every quote found in its note']},
+ count:{t:'count',name:'code counts and writes the report',kind:'Code · no model',ic:()=>mini(machine(-30,-30,60,56,{digits:'18'})+sheet(0,-40,0.55),'-40 -60 80 100'),
+  body:`<p>Code counts the decisions, compares them with the ones already written down, and writes the report. <b>Every number in it is counted by code.</b></p>
+   <p class="small">Why: in a real case from the guide, a model judge reported 29 items and a script re-counted 17. The script was right.</p>`,
+  nums:['<b>31</b> decisions','<b>18</b> in no written list','numbers a model wrote: <b>0</b>']},
+ who:{t:"who's who",name:'',kind:'Round = models · Square = code',ic:()=>mini(bot(0,4,0,{s:1.5})),
+  body:`<div class="gl">
+   <div>${mini(bot(0,0,0,{s:0.8}),'-30 -54 60 90').replace('<svg','<svg width="40" height="60"')}<span><b>foreman</b>: a small script, no model. It cuts the job into packets, hands them out and checks every answer.</span></div>
+   <div>${mini(worker(0,-6,0,{s:0.9}),'-26 -40 52 80').replace('<svg','<svg width="40" height="60"')}<span><b>worker</b>: a sub-agent that reads one packet. Many run at once.</span></div>
+   <div>${mini(packet(0,0,1.6),'-20 -20 40 40').replace('<svg','<svg width="40" height="40"')}<span><b>packet</b>: a slice of the job, sized for one worker.</span></div>
+   <div>${mini(judge(0,-8,0,{s:0.8}),'-30 -50 60 90').replace('<svg','<svg width="40" height="60"')}<span><b>judge</b>: the agent that groups what the workers found. It writes no numbers.</span></div>
+   <div>${mini(stamper(0,30,0,{s:0.6,hit:1}),'-30 -30 60 70').replace('<svg','<svg width="40" height="46"')}<span><b>gate</b>: code that checks the judge. If it fails, nothing leaves.</span></div>
+   <div>${mini(sheet(0,0,0.8),'-20 -22 40 44').replace('<svg','<svg width="40" height="44"')}<span><b>report</b>: every number in it counted by code.</span></div>
+  </div>`,
+  nums:[]},
+};
+
+// tags + hit areas
+const TAGS=[];
+ST.forEach((s,i)=>{const d=document.createElement('div');d.className='tag';d.style.left=(CX[i]-78)+'px';
+  d.innerHTML=`<div class="n">${i+1} · ${s.id}</div><div class="v">${s.v}</div><div class="plus">+</div>`;d.onclick=()=>openPanel(s.id);
+  document.getElementById('tags').appendChild(d);TAGS.push(d);
+  const h=document.createElement('div');h.className='hit';h.style.left=(CX[i]-s.hw/2)+'px';h.style.width=s.hw+'px';h.onclick=()=>openPanel(s.id);document.getElementById('hits').appendChild(h);});
+document.querySelectorAll('.btn[data-p]').forEach(b=>b.onclick=()=>openPanel(b.dataset.p));
+function openPanel(id){const p=PANELS[id];if(!p)return;
+  document.getElementById('pbody').innerHTML=`<div class="top"><div class="ic tone">${p.ic()}</div><div style="flex:1">
+    <h2><code>${p.t}</code>${p.name}</h2><div class="kind">${p.kind}</div>
+    ${p.def?`<div class="def">${p.def}</div>`:''}${p.body}
+    ${p.nums.length?`<div class="nums">${p.nums.map(n=>`<span>${n}</span>`).join('')}</div>`:''}
+    <div class="src">${SRC}</div></div></div>`;
+  document.getElementById('veil').style.display='block';document.getElementById('panel').style.display='block';}
+function closePanel(){document.getElementById('veil').style.display='none';document.getElementById('panel').style.display='none';}
+document.getElementById('px').onclick=closePanel;document.getElementById('veil').onclick=closePanel;
+addEventListener('keydown',e=>{if(e.key==='Escape')closePanel();});
+
+// ---- timeline. [start, end, station, step name, what the foreman says]
+const PH=[
+ [0.3, 3.0, 0,'cut',  '420 meeting notes came in. I cut them into packets: 7 of 60.'],
+ [3.0, 5.2, 1,'read', 'Seven workers, one packet each. They all read at the same time.'],
+ [5.2, 8.4, 1,'read', 'Each one marks every note: a decision, or none. I check every answer with code.'],
+ [8.4,10.8, 1,'sort', '7 of 7 answers check out. 332 notes had no decision, so only 88 go to the judge.'],
+ [10.8,14.2,2,'judge','Judge: group the 88 into decisions. And no numbers. I do the counting.'],
+ [14.2,16.6,3,'check','The gate checks the judge: every note exists, every quote is in its note. Pass!'],
+ [16.6,19.4,4,'count','I count: 31 decisions. 18 of them are in no written list.'],
+ [19.4,22.6,4,'done', 'Done. I read nothing: I cut, check and count. No number came from memory.'],
+];
+const REWIND='Rewinding. Example job, invented numbers. Click a station for the detail.';
+const N=21, KEEP=[1,5,9,13,18], KS=new Set(KEEP);
+const slot=(st,i)=>({x:CX[st]-81+(i%11)*15, y:BELT+8+Math.floor(i/11)*13});
+const kslot=(st,k)=>({x:CX[st]-36+k*15, y:BELT+8});
+const pop=(t,t0)=>{const p=clamp((t-t0)/0.35,0,1);return p<=0?0:1+0.25*Math.sin(p*Math.PI)*(1-p);};
+const END=22.6, leave=t=>1-clamp((t-22.7)/0.6,0,1);
+const WX=j=>CX[1]+(j-3)*40, WS=0.95, WY=BELT-2-34*WS;
+
+function foremanX(t){
+  const spots=[[0,CX[0]+40],[3.0,CX[1]-160],[8.4,420],[10.8,CX[2]-50],[14.2,CX[3]-50],[16.6,CX[4]-50]];
+  if(t>=22.7){const p=clamp((t-22.7)/1.6,0,1);const a=spots[5][1],b=spots[0][1];return {x:a+(b-a)*ease(p),walk:p>0&&p<1,run:true};}
+  let k=0;for(let i=0;i<spots.length;i++)if(t>=spots[i][0])k=i;
+  if(k===0) return {x:spots[0][1],walk:false};
+  const p=clamp((t-spots[k][0])/0.55,0,1);
+  return {x:spots[k-1][1]+(spots[k][1]-spots[k-1][1])*ease(p),walk:p<1};
+}
+
+function render(t){
+  t=((t%L)+L)%L;
+  const pi=PH.findIndex(p=>t>=p[0]&&t<p[1]);
+  const P=pi>=0?PH[pi]:null;
+  const out=t>=23.3; // results gone during the rewind
+  document.getElementById('step').textContent=P?P[3]:(t<0.3?'cut':'rewinding');
+  const st=P&&t<19.4?P[2]:-1;
+  TAGS.forEach((d,i)=>d.classList.toggle('on',i===st));
+  document.getElementById('f1').classList.toggle('lit',t>=8.4&&!out);
+  document.getElementById('f2').classList.toggle('lit',t>=17.2&&!out);
+  document.getElementById('f3').classList.toggle('lit',t>=17.8&&!out);
+  const lv=leave(t), on=a=>t>=a&&!out;
+  let g='';
+  // belt
+  g+=`<rect x="44" y="${BELT+4}" width="1196" height="34" rx="10" fill="${INK}"/><rect x="40" y="${BELT}" width="1196" height="34" rx="10" fill="${PALE}" stroke="${INK}" stroke-width="2.6"/>`;
+  const off=(t*40)%24; for(let x=50;x<1236;x+=24){const xx=x+off; if(xx<1230) g+=`<circle cx="${xx.toFixed(1)}" cy="${BELT+28}" r="2.6" fill="${MID}"/>`;}
+  // 1 cut: a counter that fills, then scissors
+  const c0=CX[0];
+  const pc = t<0.5||out?'---': t<1.9? String(60*Math.round(7*ease(clamp((t-0.5)/1.4,0,1)))).padStart(3,'0') : t<2.3?'420':'7 × 60';
+  g+=machine(c0-48,322,96,118,{title:'CUT',digits:pc,shake:(t>=2.0&&t<3.0)?t:0});
+  g+=scissors(c0+4,368,(t>=2.0&&t<3.0)?Math.abs(Math.sin(t*14)):0.6);
+  if(t>=2.0&&t<3.0) g+=sfxSvg('snip snip!',c0+30,312,-8,17);
+  // 2 read: seven workers pop in, then read; code checks each answer (a tick appears per worker)
+  const ENTER=[3.2,3.45,3.7,3.95,4.2,4.45,4.7], DONE=[7.0,7.2,7.4,7.6,7.8,8.0,8.2];
+  for(let j=0;j<7;j++){
+    const sc=pop(t,ENTER[j]); if(sc<=0||lv<=0) continue;
+    const x=WX(j), pose=(t>=5.2&&t<DONE[j])?'read':(t>=8.4&&t<10.8?'cheer':'idle');
+    g+=`<g opacity="${lv}" transform="translate(${x},${BELT}) scale(${sc.toFixed(3)}) translate(${-x},${-BELT})">${worker(x,WY,t,{hat:'S',pose,ph:j*1.3,s:WS})}</g>`;
+    if(t>=DONE[j]&&lv>0) g+=`<g opacity="${lv}" transform="translate(${x},${BELT-96})"><circle r="10" fill="${INK}"/><path d="M-4,0 l3,3 l5,-6" stroke="#fff" stroke-width="2.4" fill="none"/></g>`;
+  }
+  if(t>=3.2&&t<4.9) g+=sfxSvg('one packet each!',CX[1],BELT-118,-6,16);
+  if(t>=5.4&&t<7.0){const k=Math.floor(t*1.6)%4; g+=sfxSvg(['hm…','a decision?','none here','got one!'][k],WX([1,3,5,2][k]),BELT-112,-6,15);}
+  if(t>=7.0&&t<8.4) g+=sfxSvg('checked by code',CX[1],BELT-122,-4,15);
+  // 3 judge pops in at his desk
+  const c2=CX[2], js=pop(t,10.7), judging=t>=11.0&&t<14.2;
+  g+=`<rect x="${c2-44}" y="${BELT-26}" width="88" height="22" rx="3" fill="${WOOD}" stroke="${INK}" stroke-width="2.4"/>`;
+  if(js>0&&lv>0){ const hit=judging?Math.max(0,1-Math.abs(((t*1.25)%1)-0.5)*5):0;
+    g+=`<g opacity="${lv}" transform="translate(${c2},${BELT-20}) scale(${js.toFixed(3)}) translate(${-c2},${-(BELT-20)})">${judge(c2-14,BELT-64,t,{hit,s:1.15})}</g>`;
+    g+=`<rect x="${c2-44}" y="${BELT-26}" width="88" height="22" rx="3" fill="${WOOD}" stroke="${INK}" stroke-width="2.4"/>`;
+    if(judging&&hit>0.6) g+=sfxSvg('TOK!',c2+44,BELT-96,-10,22);
+    g+=`<text x="${c2}" y="${BELT-10}" text-anchor="middle" font-size="11" font-weight="800" fill="#fff" font-family="${SANS}" opacity="${lv}">no numbers</text>`; }
+  // 4 check: the gate stamps
+  const c3=CX[3], sh=t<15.0?0:t<15.2?ease((t-15.0)/0.2):t<15.5?1:Math.max(0,1-(t-15.5)/0.3);
+  g+=stamper(c3,BELT-4,t,{hit:sh,word:'GATE'});
+  if(t>=15.15&&t<16.0) g+=sfxSvg('BAM!',c3+66,BELT-96,-12,26);
+  if(on(15.15)) g+=`<g opacity="${lv}" transform="translate(${c3+52},${BELT-34}) rotate(-8)"><rect x="-30" y="-12" width="60" height="22" rx="3" fill="${ACC}" stroke="${INK}" stroke-width="2.4"/><text x="0" y="4" text-anchor="middle" font-size="13" font-weight="900" fill="#fff" font-family="${SANS}">PASS</text></g>`;
+  // 5 count: code counts, the report rises
+  const c4=CX[4], paper=on(17.0)?clamp((t-17.0)/0.9,0,1)*lv:0;
+  if(paper>0){ g+=`<rect x="${c4-32}" y="${(360-44*paper).toFixed(1)}" width="64" height="${(44*paper+4).toFixed(1)}" fill="#fff" stroke="${INK}" stroke-width="2"/>`;
+    if(paper>0.6) g+=`<text x="${c4}" y="${(382-44*paper).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="800" font-family="${SANS}">report.md</text>`; }
+  g+=machine(c4-48,360,96,80,{title:'COUNT',digits:on(17.2)?'31 · 18':'--',shake:(t>=16.8&&t<17.2)?t:0});
+  if(t>=17.2&&t<18.4) g+=sfxSvg('counted, not guessed',c4-10,BELT-140,-6,15);
+  // packets
+  for(let i=0;i<N;i++){
+    const keep=KS.has(i), ki=KEEP.indexOf(i), oi=i-KEEP.filter(q=>q<i).length;
+    let x,y,op=1,fill='#fff',rot=0;
+    const s0=i*0.03;
+    const mv=(A,B,p)=>{const e=ease(clamp(p,0,1));return [A.x+(B.x-A.x)*e,A.y+(B.y-A.y)*e];};
+    if(t<0.5){op=0;x=0;y=0;}
+    else if(t<3.0){const p=clamp((t-0.5-s0)/1.2,0,1);const B=slot(0,i);x=20+(B.x-20)*ease(p);y=BELT+8+(B.y-BELT-8)*ease(p);op=p>0?1:0;}
+    else if(t<5.2){[x,y]=mv(slot(0,i),slot(1,i),(t-3.0-s0)/1.0);}
+    else if(t<8.4){({x,y}=slot(1,i));}
+    else if(t<10.8){const p=(t-8.4)/1.6; fill=keep?ACC_L:GREY;
+      if(keep){[x,y]=mv(slot(1,i),kslot(2,ki),(p-0.1)*1.4);}
+      else {const A=slot(1,i),e=ease(clamp((p-0.05)*1.7,0,1));const bx=490+(oi%7)*20,by=BELT+40;x=A.x+(bx-A.x)*e;y=A.y+(by-A.y)*e;rot=e*20*(oi%2?1:-1);op=1-e;}
+    } else if(!keep){op=0;}
+    else { fill=t>=15.15?ACC:ACC_L;
+      if(t<14.2)({x,y}=kslot(2,ki)); else if(t<14.5)[x,y]=mv(kslot(2,ki),kslot(3,ki),(t-14.2)/0.3); else if(t<16.6)({x,y}=kslot(3,ki));
+      else if(t<17.0)[x,y]=mv(kslot(3,ki),kslot(4,ki),(t-16.6)/0.4); else ({x,y}=kslot(4,ki));
+      if(t>=22.8){const p=clamp((t-22.8)/0.8,0,1);x+=ease(p)*200;op=1-p;}
+    }
+    if(op>0) g+=`<g opacity="${op.toFixed(2)}">${packet(x+6,y+7,0.62,fill,rot)}</g>`;
+  }
+  // chute, over the packets that fall in
+  g+=`<path d="M462,${BELT+36} h186 l-10,44 h-166 z" fill="#fff" stroke="${INK}" stroke-width="2.4"/>`;
+  // the foreman
+  const F=foremanX(t);
+  g+=bot(F.x,576,t,{walk:F.walk});
+  if(F.run&&F.walk) g+=sfxSvg('rewinding!',F.x+110,590,-6,16);
+  document.getElementById('scene').innerHTML=g;
+  const say=document.getElementById('say');
+  say.innerHTML=`<b>The foreman</b> (a small script): “${P?P[4]:(t<0.3?PH[0][4]:REWIND)}”`;
+  say.style.setProperty('--tx',Math.min(790,Math.max(30,F.x-40))+'px');
+}
+const tail=document.createElement('style');
+tail.textContent=`#say::before{content:"";position:absolute;left:var(--tx,100px);top:-15px;border:11px solid transparent;border-bottom:14px solid ${INK};border-top:0;transform:translateX(-11px)}
+#say::after{content:"";position:absolute;left:var(--tx,100px);top:-10px;border:8px solid transparent;border-bottom:11px solid #fff;border-top:0;transform:translateX(-8px)}`;
+document.head.appendChild(tail);
+const q=new URLSearchParams(location.search);
+if(q.has('still')) document.getElementById('stage').classList.add('still');
+window.__seek=render;
+if(q.has('panel')) openPanel(q.get('panel'));
+if(q.has('capture')) render(q.has('t')?parseFloat(q.get('t')):0); else KIT.run(render,L);
+window.__ready=true;
+</script>
+</body>
+</html>

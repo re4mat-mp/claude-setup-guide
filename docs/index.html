@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Open the box: a Claude Code setup, mistakes included</title>
+<meta name="description" content="An interactive picture of a Claude Code setup: five agents with one craft each, three guard hooks, a memory that loads whole, and four checks before anything reaches main. Click any part for the detail.">
+<script src="kit.js"></script>
+<script src="kit_setup.js"></script>
+<style>
+  .panel{width:330px;height:272px;box-sizing:border-box;border:2.5px solid var(--ink);border-radius:6px;background:#fff;box-shadow:4px 4px 0 var(--ink);cursor:pointer}
+  .pt{position:absolute;left:0;top:0;right:0;height:30px;box-sizing:border-box;padding:6px 8px 0 40px;font-size:13.5px;font-weight:850;border-bottom:2.5px solid var(--ink);background:var(--pale);border-radius:4px 4px 0 0}
+  .pt.on{background:var(--acc);color:#fff}
+  .pc{position:absolute;left:10px;right:10px;bottom:8px;font-size:12.5px;line-height:1.32;color:var(--ink2)}
+  .pc b{color:var(--ink)}
+  .pc code{font-family:var(--mono);font-size:12px;font-weight:800;color:var(--ink)}
+  .chip{position:absolute;cursor:pointer;z-index:4;font-size:12px;line-height:1.2;color:var(--ink2);transform-origin:20% 50%}
+  .chip .big{font-size:26px;font-weight:900;color:var(--ink);line-height:1}
+  .chip b{color:var(--ink)}
+  .claude{left:62px;top:146px;width:470px;padding:7px 12px 7px 60px;box-sizing:border-box;font-size:12.5px;line-height:1.3;color:var(--ink2);cursor:pointer;transform-origin:50% 50%}
+  .claude .n{font-family:var(--mono);font-size:14px;font-weight:850;color:var(--ink)}
+  .plus{position:absolute;width:18px;height:18px;border-radius:9px;background:var(--ink);color:#fff;font-size:14px;font-weight:900;line-height:18px;text-align:center;font-family:var(--sans)}
+  .hit{position:absolute;cursor:pointer;z-index:3}
+  .hint{left:236px;top:127px;font-size:12px;color:var(--ink3)}
+  /* the GIF and the hero still: nothing to click there, so no "+" and no hint */
+  .still .plus,.still .hint{display:none !important}
+  #veil{position:absolute;left:0;top:0;width:1280px;height:720px;background:rgba(241,242,244,.85);display:none;z-index:20}
+  #panel{position:absolute;left:190px;top:112px;width:900px;z-index:21;display:none;border:3px solid var(--ink);border-radius:16px;background:#fff;
+    box-shadow:7px 7px 0 var(--ink);padding:18px 22px 18px 22px;box-sizing:border-box}
+  #panel .top{display:flex;gap:18px;align-items:flex-start}
+  #panel .ic{flex:0 0 110px;height:110px;border:2.5px solid var(--ink);border-radius:12px}
+  #panel h2{margin:0;font-size:25px;font-weight:900;letter-spacing:-.01em;padding-right:40px}
+  #panel h2 code{font-family:var(--mono);font-size:19px;background:var(--acc-l);border:2px solid var(--ink);border-radius:6px;padding:0 6px;margin-right:8px}
+  #panel .kind{font-size:12.5px;font-weight:800;color:var(--ink3);letter-spacing:.05em;margin-top:3px;text-transform:uppercase}
+  #panel p{margin:10px 0 0;font-size:16px;line-height:1.42;color:var(--ink2)}
+  #panel p b,#panel li b{color:var(--ink)}
+  #panel code{font-family:var(--mono);font-size:14px;font-weight:700;color:var(--ink)}
+  #panel ol{margin:10px 0 0;padding-left:22px;font-size:16px;line-height:1.42;color:var(--ink2)}
+  #panel ol li{margin-bottom:4px}
+  #panel .def{background:var(--pale);border-left:5px solid var(--ink);padding:6px 10px;margin-top:10px;font-size:15.5px;line-height:1.4}
+  #panel .nums{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+  #panel .nums span{border:2px solid var(--ink);border-radius:8px;padding:3px 9px;font-size:14.5px;font-weight:650;background:#fff}
+  #panel .nums span b{font-size:17px;font-weight:900}
+  #panel .x{position:absolute;right:12px;top:10px;width:34px;height:34px;border:2.5px solid var(--ink);border-radius:17px;background:#fff;font-size:20px;font-weight:900;line-height:28px;text-align:center;cursor:pointer}
+  #panel .src{margin-top:12px;font-size:12px;color:var(--ink4);font-family:var(--mono)}
+  #panel .small{font-size:13.5px;color:var(--ink3)}
+  #panel .gl{display:grid;grid-template-columns:1fr 1fr;gap:8px 22px;margin-top:12px}
+  #panel .gl div{font-size:14.5px;line-height:1.35;color:var(--ink2);display:flex;gap:10px;align-items:flex-start}
+  #panel .gl svg{flex:0 0 40px}
+  /* the stage sits in a frame sized by script, so the text version can flow below it */
+  html,body{overflow-x:hidden;overflow-y:auto}
+  #frame{position:relative;width:1280px;height:720px;max-width:100%;margin:0 auto;overflow:hidden}
+  .head{margin:0}
+  /* the text version: plain HTML, readable with JavaScript off */
+  #text{max-width:720px;margin:0 auto;padding:28px 20px 48px;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,Roboto,sans-serif;font-size:16px;line-height:1.55;color:#3D424C;background:#F1F2F4}
+  #text h2{font-size:20px;color:#15171C;margin:0 0 4px}
+  #text .lead{font-size:13px;color:#5F6672;margin:0 0 14px}
+  #text ol{padding-left:22px;margin:10px 0}
+  #text li{margin-bottom:6px}
+  #text b,#text strong{color:#15171C}
+  #text code{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:14px;color:#15171C}
+  #text a{color:#15171C;text-decoration-color:#6A4CF5;text-decoration-thickness:2px;text-underline-offset:3px}
+  #text nav{display:flex;flex-wrap:wrap;gap:8px 22px;margin-top:18px;font-weight:700}
+</style>
+<noscript><style>#frame{display:none} html,body{background:#F1F2F4;margin:0}</style></noscript>
+</head>
+<body>
+<div id="frame"><div id="fit"><div id="stage" class="tone">
+  <div class="abs badge tone-acc">箱</div>
+  <div class="abs kicker">OPEN THE BOX · a Claude Code setup, mistakes included</div>
+  <h1 class="abs head">Inside: <b>a team you can brief</b>.<br>On top: <b>four checks</b>.</h1>
+  <div class="abs rule ink"><div class="k">HOW TO READ IT</div><b>Round</b> = agents (models): they build, read, judge.<br><b>Square</b> = hooks (code): they enforce.<br><span style="font-size:12px;color:var(--ink3)">Hat letter = model: O Opus · S Sonnet · H Haiku</span></div>
+  <div class="abs hint">click any part or panel for the detail</div>
+
+  <!-- left: the inventory -->
+  <div class="abs cap claude" id="g-claude" data-p="claude">
+    <svg class="abs" style="left:10px;top:7px" width="42" height="50" viewBox="-2 -2 42 50"><rect x="3" y="3" width="36" height="44" rx="3" fill="#15171C"/><rect width="36" height="44" rx="3" fill="#fff" stroke="#15171C" stroke-width="2.2"/><rect width="36" height="9" rx="2" fill="#E7E9ED" stroke="#15171C" stroke-width="1.8"/><path d="M6,17 h24 M6,24 h18 M6,31 h22 M6,38 h14" stroke="#15171C" stroke-width="1.4" opacity=".6"/></svg>
+    <span class="n">CLAUDE.md</span> &nbsp;<b style="color:var(--ink)">loads in every session.</b><br>Rules here · facts in knowledge/ · procedures in skills/ · corrections in memory/
+    <span class="plus" style="right:-9px;top:-9px">+</span></div>
+  <div class="chip" id="c-agents" data-p="agents" style="left:458px;top:236px;width:96px"><div class="big"><span id="n-agents">5</span><span class="plus" style="position:relative;display:inline-block;margin-left:7px;vertical-align:6px">+</span></div><b>agents</b>, one craft each</div>
+  <div class="chip" id="c-hooks" data-p="hooks" style="left:458px;top:330px;width:96px"><div class="big"><span id="n-hooks">3</span><span class="plus" style="position:relative;display:inline-block;margin-left:7px;vertical-align:6px">+</span></div><b>guard hooks</b>: prose explains, a hook enforces</div>
+  <div class="chip" id="c-memory" data-p="memory" style="left:44px;top:512px;width:120px"><div class="big"><span id="n-memory">35</span><span class="plus" style="position:relative;display:inline-block;margin-left:7px;vertical-align:6px">+</span></div><b>habits</b> in memory/, one per file</div>
+  <div class="chip" id="c-knowledge" data-p="knowledge" style="left:206px;top:512px;width:120px"><div class="big"><span id="n-knowledge">3</span><span class="plus" style="position:relative;display:inline-block;margin-left:7px;vertical-align:6px">+</span></div><b>notes</b> in knowledge/, INDEX.md first</div>
+  <div class="chip" id="c-skills" data-p="skills" style="left:362px;top:512px;width:120px"><div class="big"><span id="n-skills">2</span><span class="plus" style="position:relative;display:inline-block;margin-left:7px;vertical-align:6px">+</span></div><b>skills</b>, one folder each</div>
+
+  <!-- right: four panels -->
+  <div class="abs panel" id="p1" data-p="check1" style="left:580px;top:136px"><div class="pt">No length cap on a review</div><span class="plus" style="right:-9px;top:-9px">+</span>
+    <div class="pc"><code>breaker</code> reports <b>every finding</b>, ordered by damage. Brevity is for the verdict line only.</div></div>
+  <div class="abs panel" id="p2" data-p="check2" style="left:926px;top:136px"><div class="pt">The memory index loads whole</div><span class="plus" style="right:-9px;top:-9px">+</span>
+    <div class="pc"><code>MEMORY.md</code>: <b>55 lines, ~5 KB</b>. Budget: well under 200 lines and ~20 KB. A new line pays with an old one.</div></div>
+  <div class="abs panel" id="p3" data-p="check3" style="left:580px;top:426px"><div class="pt">A reviewer that didn't write the code</div><span class="plus" style="right:-9px;top:-9px">+</span>
+    <div class="pc">CodeRabbit + <code>breaker</code> until both green → <b>cold review in Opus</b>: 1 test run, mutants on a risky change → <b>a human</b> reads and merges.</div></div>
+  <div class="abs panel" id="p4" data-p="check4" style="left:926px;top:426px"><div class="pt">A guard on the way to main</div><span class="plus" style="right:-9px;top:-9px">+</span>
+    <div class="pc"><code>gh-guard.sh</code>: no merge without a <b>human</b> approval, none through the API, no push straight to main in your org's repos. <b>25 tests, all pass.</b></div></div>
+
+  <svg id="scene" class="abs" width="1280" height="720" viewBox="0 0 1280 720" style="left:0;top:0;z-index:2;pointer-events:none"></svg>
+
+  <div class="hit" data-p="agents" style="left:40px;top:200px;width:520px;height:104px"></div>
+  <div class="hit" data-p="hooks" style="left:40px;top:308px;width:520px;height:104px"></div>
+  <div class="hit" data-p="memory" style="left:40px;top:416px;width:156px;height:150px"></div>
+  <div class="hit" data-p="knowledge" style="left:198px;top:416px;width:146px;height:150px"></div>
+  <div class="hit" data-p="skills" style="left:346px;top:410px;width:172px;height:156px"></div>
+
+  <div id="veil"></div>
+  <div id="panel"><div class="x" id="px">×</div><div id="pbody"></div></div>
+</div></div></div>
+
+<section id="text" aria-labelledby="tv">
+  <noscript><p><strong>Open the box: a Claude Code setup, mistakes included.</strong> The animation needs JavaScript; this is the same picture in words.</p></noscript>
+  <h2 id="tv">Text version</h2>
+  <p class="lead">What the picture shows, for people and for AI. Every count matches the repo.</p>
+  <p>An open box labelled <code>claude-setup-guide</code>: a Claude Code setup, mistakes included, the part I'd hand to a friend. In the picture, round characters are agents (models) and square robots are hooks (code). The letter on a hat is the model: O Opus, S Sonnet, H Haiku.</p>
+  <ol>
+    <li><b><code>CLAUDE.md</code> loads in every session.</b> Rules live there, facts in <code>knowledge/</code>, procedures in <code>skills/</code>, corrections in <code>memory/</code>.</li>
+    <li><b>5 agents, one craft each:</b> builder, breaker, organizer, navigator and skimmer.</li>
+    <li><b>3 guard hooks</b>, because prose explains and a hook enforces: <code>gh-guard.sh</code>, <code>pkill-guard.py</code>, <code>workflow-guard.py</code>.</li>
+    <li><b>35 habits</b> in <code>memory/</code>, one per file; <b>3 notes</b> in <code>knowledge/</code>, with <code>INDEX.md</code> read first; <b>2 skills</b>: <code>pr-review-loop</code> and <code>see-the-data</code>.</li>
+    <li><b>Check 1, no length cap on a review:</b> the breaker reports every finding, ordered by damage. Brevity is for the verdict line only.</li>
+    <li><b>Check 2, the memory index loads whole:</b> <code>MEMORY.md</code> is 55 lines, about 5 KB, well under the budget of 200 lines and ~20 KB. A new line pays with an old one.</li>
+    <li><b>Check 3, a reviewer that didn't write the code:</b> a bot reviewer and the breaker loop until both are green, then a cold review in Opus runs the tests once and, on a risky change, plants 10–20 small bugs. Then a person reads it and merges.</li>
+    <li><b>Check 4, a guard on the way to main:</b> <code>gh-guard.sh</code> blocks a merge without a human approval, merging through the API, and a push straight to main in your org's repos. Its 25 tests pass.</li>
+  </ol>
+  <nav><a href="https://github.com/re4mat-mp/claude-setup-guide">The guide on GitHub (README)</a><a href="factory/">The factory: how a heavy job runs →</a></nav>
+</section>
+
+<script>
+KIT.injectCSS(); KIT.fit();
+(function(){const fr=document.getElementById('frame');const f=()=>{const s=Math.min(innerWidth/1280,innerHeight/720);fr.style.width=(1280*s)+'px';fr.style.height=(720*s)+'px';};addEventListener('resize',f);f();})();
+const {INK,ACC,ACC_L,PALE,GREY,MID,KRAFT,KRAFT_L,KRAFT_D,bot,worker,sfxSvg,ease,clamp}=KIT;
+const {agent,bug,rabbit,human,door,books,pinboard,recipe,pin,tag}=SKIT;
+const r2=v=>Math.round(v*10)/10;
+const L=18.5;
+// ---- the script, in seconds
+const T={shake:[0.3,1.0], open:[1.0,1.4], pops:{claude:1.5,agents:2.1,hooks:2.7,memory:3.3,knowledge:3.8,skills:4.3}, pop:0.55,
+         P:[6.0,8.6,11.2,13.8], pd:2.6, fade:[17.9,18.4]};
+const backOut=p=>{const c1=1.70158,c3=c1+1;return 1+c3*Math.pow(p-1,3)+c1*Math.pow(p-1,2);};
+const prog=(t,a,d)=>clamp((t-a)/d,0,1);
+const MOUTH=[300,600];
+// pop out of the box: position eases out with NO overshoot (an overshoot made a part cross the one above it); only the scale bounces
+function popT(t,key,ax,ay){ const p=prog(t,T.pops[key],T.pop); const e=1-Math.pow(1-p,3), b=backOut(p);
+  return {dx:(1-e)*(MOUTH[0]-ax), dy:(1-e)*(MOUTH[1]-ay), s:0.25+0.75*b, o:clamp(p*3,0,1)}; }
+const svgPop=(q,ax,ay,inner)=>q.o<=0?'' : `<g opacity="${r2(q.o)}" transform="translate(${r2(q.dx)},${r2(q.dy)}) translate(${ax},${ay}) scale(${r2(q.s*100)/100}) translate(${-ax},${-ay})">${inner}</g>`;
+function htmlPop(el,q){ el.style.opacity=q.o; el.style.transform=`translate(${r2(q.dx)}px,${r2(q.dy)}px) scale(${r2(q.s*100)/100})`; }
+
+function render(t){
+  t=((t%L)+L)%L;
+  const fadeK = 1-ease(prog(t,T.fade[0],T.fade[1]-T.fade[0]));
+  let g='';
+  // ---- the box: shakes, opens, closes again at the loop
+  const open = t<T.open[0]?0 : t<T.open[1]? ease(prog(t,T.open[0],T.open[1]-T.open[0])) : (t>=T.fade[0]? fadeK : 1);
+  const shake = (t>=T.shake[0]&&t<T.shake[1])? Math.sin(t*55)*2.2 : 0;
+  g+=`<g transform="translate(${r2(70+shake)},628)">
+    ${open>=0.5? `<g opacity="${r2((open-0.5)*2)}"><path d="M0,0 l-34,-40 l160,0 l34,40 z" fill="${KRAFT_L}" stroke="${INK}" stroke-width="2.6"/>
+      <path d="M460,0 l34,-40 l-160,0 l-34,40 z" fill="${KRAFT_L}" stroke="${INK}" stroke-width="2.6"/></g>`:''}
+    <path d="M0,0 h460 l-10,-14 h-440 z" fill="${KRAFT_D}" stroke="${INK}" stroke-width="2.4"/>
+    ${open<0.5? `<rect x="-4" y="-16" width="468" height="18" fill="${KRAFT_L}" stroke="${INK}" stroke-width="2.6"/><path d="M230,-16 v18" stroke="${INK}" stroke-width="2"/>
+      <rect x="200" y="-16" width="60" height="18" fill="${PALE}" opacity=".8"/>`:''}
+    <rect x="5" y="5" width="460" height="110" fill="${INK}"/>
+    <rect x="0" y="0" width="460" height="110" fill="${KRAFT}" stroke="${INK}" stroke-width="2.6"/>
+    <rect x="70" y="30" width="320" height="56" rx="4" fill="#fff" stroke="${INK}" stroke-width="2"/>
+    <path d="M10,10 l18,0 M10,16 l12,0" stroke="${INK}" stroke-width="2" opacity=".4"/>
+    <text x="230" y="54" text-anchor="middle" font-size="15" font-weight="900" font-family="ui-monospace,Menlo,monospace" fill="${INK}">claude-setup-guide</text>
+    <text x="230" y="74" text-anchor="middle" font-size="12" fill="#3D424C" font-family="-apple-system,system-ui">the part I'd hand to a friend</text></g>`;
+  if(t>=T.open[0]-0.05 && t<T.open[1]+0.5){ const k=prog(t,T.open[0],0.9); g+=`<g opacity="${r2(1-k)}">${sfxSvg('POP!',300,560-k*30,-8,30+k*10)}</g>`; }
+  // motion lines while things fly out
+  if(t>T.pops.claude-0.1 && t<T.pops.skills+0.9) for(let i=0;i<7;i++){ const x=110+i*62, y=596-((t*30+i*9)%22); g+=`<path d="M${x},${r2(y)} v-14" stroke="${INK}" stroke-width="2.2" stroke-linecap="round" opacity=".45"/>`; }
+
+  // ---- the parts pop out and get counted
+  const Q={}; for(const k of Object.keys(T.pops)){ Q[k]=popT(t,k,{claude:297,agents:250,hooks:240,memory:100,knowledge:270,skills:430}[k],{claude:176,agents:250,hooks:360,memory:470,knowledge:470,skills:460}[k]); Q[k].o*=fadeK; }
+  htmlPop(document.getElementById('g-claude'),Q.claude);
+  const AY=246;
+  let a='';
+  a+=agent(78,AY,t,{hat:'O',prop:'wrench'})+tag(80,AY+40,'builder');
+  a+=agent(166,AY,t,{hat:'O',prop:'hammer',ph:1})+tag(168,AY+40,'breaker');
+  a+=agent(254,AY,t,{hat:'S',prop:'cards',ph:2})+tag(256,AY+40,'organizer');
+  a+=agent(342,AY,t,{hat:'O',prop:'glass',ph:3})+tag(344,AY+40,'navigator');
+  for(let i=0;i<5;i++) a+=worker(398+i*11,AY+10+(i%2)*6,t+i,{hat:'H',s:0.42,pose:'read',ph:i});
+  a+=tag(422,AY+40,'skimmer',{w:66});
+  g+=svgPop(Q.agents,250,250,a);
+  const HY=356; let h='';
+  h+=bot(110,HY,t,{s:0.9})+tag(110,HY+34,'gh-guard.sh',{fill:ACC_L});
+  h+=bot(240,HY,t+0.7,{band:false,s:0.9})+tag(240,HY+34,'pkill-guard.py');
+  h+=bot(370,HY,t+1.4,{band:false,s:0.9})+tag(370,HY+34,'workflow-guard.py');
+  g+=svgPop(Q.hooks,240,360,h);
+  g+=svgPop(Q.memory,100,470,pinboard(48,428,7,35,{w:13,h:10,gap:2.5}));
+  g+=svgPop(Q.knowledge,270,470,books(244,490,4));
+  g+=svgPop(Q.skills,430,460,recipe(352,436,'pr-review-loop',-1,150)+recipe(356,470,'see-the-data',1,150));
+  // chips: ride in with their group, then count up
+  const CH={agents:5,hooks:3,memory:35,knowledge:3,skills:2};
+  for(const k in CH){ const el=document.getElementById('c-'+k); const q=Q[k];
+    el.style.opacity=q.o; el.style.transform=`translate(${r2(q.dx)}px,${r2(q.dy)}px) scale(${r2(q.s*100)/100})`;
+    const c=prog(t,T.pops[k]+0.2,0.8);
+    document.getElementById('n-'+k).textContent = Math.round(CH[k]*ease(c)); }
+
+  // ---- the four comic panels, one gag after another
+  const pt=i=>clamp(t-T.P[i],0,T.pd); // seconds into its slot (held at the end)
+  for(let i=0;i<4;i++) document.querySelector(`#p${i+1} .pt`).classList.toggle('on', t>=T.P[i] && t<T.P[i]+T.pd);
+  const vis=(i)=> t>=T.P[i];
+  const op=(x)=>r2(clamp(x,0,1)*fadeK);
+  g+=pin(600,151,1,0.85)+pin(946,151,2,0.85)+pin(600,441,3,0.85)+pin(946,441,4,0.85);
+
+  // 1 · breaker and the endless scroll
+  if(vis(0)){ const s=pt(0); let p='';
+    p+=`<g opacity="${op(s/0.3)}">${agent(660,258,t*1.6,{hat:'O',prop:'hammer',ph:1,s:1.25})}</g>`;
+    const len=240*ease(prog(s,0.3,1.3))+(s>1.6?Math.sin(t*1.3)*8:0);
+    if(len>2){ let ln=''; for(let x=706;x<680+len;x+=15) ln+=`<path d="M${x},301 h${8+(x%5)} M${x},308 h${5+(x%6)}" stroke="${INK}" stroke-width="1.2" opacity=".55"/>`;
+      p+=`<g opacity="${op(1)}"><path d="M684,272 l14,0 l12,22 l${r2(Math.max(len-30,0))},0 l0,20 l${r2(-Math.max(len-26,0))},0 z" fill="#fff" stroke="${INK}" stroke-width="2"/>${ln}
+        <ellipse cx="${r2(684+len)}" cy="304" rx="6" ry="12" fill="${PALE}" stroke="${INK}" stroke-width="2"/></g>`; }
+    const items=[['1. data and money',730,210,0.6],['2. what breaks for a reader',740,228,1.0],['3. then style',750,246,1.4]];
+    p+=`<g font-family="-apple-system,system-ui" font-size="11" font-weight="800" fill="${INK}">`+items.map(([w,x,y,a])=>`<text x="${x}" y="${y}" opacity="${op((s-a)/0.2)}">${w}</text>`).join('')+`</g>`;
+    if(s>1.6){ const k=backOut(prog(s,1.6,0.35)); p+=`<g opacity="${op(1)}" transform="translate(826,186) scale(${r2(k*100)/100}) translate(-826,-186)">${sfxSvg('every finding!',826,186,-6,20)}</g>`; }
+    g+=p; }
+
+  // 2 · the index sits under the budget line
+  if(vis(1)){ const s=pt(1); let p=''; const LY=200;
+    const w=292*ease(prog(s,0,0.6));
+    p+=`<g opacity="${op(1)}"><path d="M954,${LY} h${r2(w)}" stroke="${INK}" stroke-width="2.6" stroke-dasharray="7 5"/>
+      <text x="1244" y="${LY-6}" text-anchor="end" font-size="11" font-weight="800" fill="${INK}" font-family="-apple-system,system-ui" opacity="${op((s-0.4)/0.2)}">budget: ~20 KB · 200 lines</text></g>`;
+    if(s>0.5){ const d=backOut(prog(s,0.5,0.5)); const y=150+(232-150)*d;
+      p+=`<g opacity="${op((s-0.5)/0.15)}" transform="translate(1000,${r2(y)})"><rect x="4" y="4" width="92" height="66" rx="4" fill="${INK}"/><rect width="92" height="66" rx="4" fill="#fff" stroke="${INK}" stroke-width="2.4"/>
+        <rect width="92" height="13" rx="3" fill="${PALE}" stroke="${INK}" stroke-width="2"/>
+        <text x="46" y="10.5" text-anchor="middle" font-size="9.5" font-weight="900" font-family="ui-monospace,Menlo,monospace">MEMORY.md</text>
+        ${[0,1,2,3,4,5,6].map(i=>`<path d="M8,${22+i*6.5} h${40+((i*13)%30)}" stroke="${INK}" stroke-width="1.3" opacity=".55"/>`).join('')}</g>`; }
+    p+=`<text x="1046" y="320" text-anchor="middle" font-size="10.5" font-weight="800" fill="${INK}" font-family="ui-monospace,Menlo,monospace" opacity="${op((s-1.1)/0.2)}">55 lines · ~5 KB</text>`;
+    if(s>1.2) p+=`<g opacity="${op((s-1.2)/0.2)}">${agent(1150,262,t,{hat:'S',prop:'cards',ph:2,pose:s>1.6?'cheer':'idle'})}</g>`;
+    if(s>1.7){ const k=backOut(prog(s,1.7,0.35)); p+=`<g opacity="${op(1)}" transform="translate(1150,334) scale(${r2(k*100)/100}) translate(-1150,-334)">${sfxSvg('loads whole!',1150,334,-5,18)}</g>`; }
+    g+=p; }
+
+  // 3 · the relay: two reviewers → cold, in Opus → a human
+  if(vis(2)){ const s=pt(2); let p=''; const PY=548;
+    p+=`<g opacity="${op(s/0.3)}">${rabbit(634,PY,t,{s:0.85})}${agent(680,PY,t,{hat:'O',prop:'hammer',ph:1,s:0.85})}
+        <text x="656" y="${PY+56}" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="10" font-weight="800" fill="${INK}">2 reviewers</text></g>`;
+    if(s>0.5){ const k=backOut(prog(s,0.5,0.3)); p+=`<g opacity="${op(1)}" transform="translate(658,${PY-36}) scale(${r2(k*100)/100}) translate(-658,${-(PY-36)})">${sfxSvg('green!',658,PY-36,-8,14)}</g>`; }
+    const arrow=(x,a)=>`<g opacity="${op((s-a)/0.2)}"><path d="M${x},${PY+4} h18" stroke="${INK}" stroke-width="2.4"/><path d="M${x+14},${PY-2} l6,6 l-6,6" fill="none" stroke="${INK}" stroke-width="2.4"/></g>`;
+    p+=arrow(712,0.8);
+    if(s>0.9){ p+=`<g opacity="${op((s-0.9)/0.2)}">${agent(766,PY,t,{hat:'O',prop:'jar',pose:'read',ph:2,s:0.85})}
+        <text x="766" y="${PY+56}" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="10" font-weight="800" fill="${INK}">cold, in Opus</text></g>`;
+      for(let i=0;i<3;i++){ const k=ease(prog(s,1.1+i*0.12,0.4)); const bx=786+(752+i*18-786)*k+Math.sin(t*3+i)*3*k, by=PY+12+(22*k)+Math.cos(t*4+i)*2*k;
+        p+=`<g opacity="${op(k*3)}">${bug(bx,by,0.42,t+i)}</g>`; } }
+    p+=arrow(806,1.7);
+    if(s>1.9){ p+=`<g opacity="${op((s-1.9)/0.2)}">${human(866,PY-6,t,{s:0.85,cheer:s>2.1})}
+        <text x="866" y="${PY+56}" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="10" font-weight="800" fill="${INK}">a human</text></g>`;
+      const k=backOut(prog(s,2.1,0.3)); p+=`<g opacity="${op(1)}" transform="translate(866,${PY-50}) scale(${r2(k*100)/100})"><rect x="-26" y="-10" width="52" height="18" rx="4" fill="${ACC}" stroke="${INK}" stroke-width="2"/><text y="3.5" text-anchor="middle" font-size="10" font-weight="900" fill="#fff" font-family="-apple-system,system-ui">merge</text></g>`; }
+    g+=p; }
+
+  // 4 · the door: a bot-approved PR bounces, a human-approved one goes through
+  if(vis(3)){ const s=pt(3); let p='';
+    const dOpen = 0.15 + 0.55*Math.sin(Math.PI*prog(s,1.75,0.8));
+    p+=`<g opacity="${op(s/0.25)}">${door(1140,488,80,70,'main',dOpen)}${bot(1086,522,t,{s:1.05})}
+      <text x="1086" y="574" text-anchor="middle" font-size="10.5" font-weight="800" fill="${INK}" font-family="ui-monospace,Menlo,monospace">gh-guard.sh</text></g>`;
+    const inK=ease(prog(s,0.2,0.6)), back=ease(prog(s,0.9,0.4));
+    const bx=950+(1024-950)*inK-(1024-1000)*back + (s>1.4?Math.sin(t*2)*5:0), rot=-16*back;
+    if(s>0.2){ p+=`<g opacity="${op(1)}"><g transform="translate(${r2(bx)},530) rotate(${r2(rot)})"><rect x="-16" y="-13" width="32" height="24" rx="3" fill="#fff" stroke="${INK}" stroke-width="2.2"/><text y="4" text-anchor="middle" font-size="10.5" font-weight="900" font-family="ui-monospace,Menlo,monospace">PR</text></g>
+      <g transform="translate(${r2(bx+16)},512)"><rect x="-17" y="-8" width="34" height="15" rx="3" fill="${GREY}" stroke="${INK}" stroke-width="1.8"/><text y="3.5" text-anchor="middle" font-size="8" font-weight="900" fill="${INK}" font-family="-apple-system,system-ui">bot ok</text></g></g>`; }
+    if(s>0.85){ const k=backOut(prog(s,0.85,0.3)); p+=`<g opacity="${op(1)}" transform="translate(1018,486) scale(${r2(k*100)/100}) translate(-1018,-486)">${sfxSvg('DENY!',1018,486,-10,24)}</g>`; }
+    if(s>1.5 && s<2.5){ const k=ease(prog(s,1.5,0.9)); const hx=960+(1180-960)*k, hy= k<0.82 ? 618-12*(k/0.82) : 606-58*((k-0.82)/0.18); // stays under the guard's label, then up into the door
+      p+=`<g opacity="${op(1-prog(s,2.2,0.3))}"><g transform="translate(${r2(hx)},${r2(hy)})"><rect x="-14" y="-11" width="28" height="21" rx="3" fill="#fff" stroke="${INK}" stroke-width="2.2"/><text y="4" text-anchor="middle" font-size="9.5" font-weight="900" font-family="ui-monospace,Menlo,monospace">PR</text></g>
+        <g transform="translate(${r2(hx+4)},${r2(hy-17)})"><rect x="-26" y="-8" width="52" height="15" rx="3" fill="${ACC}" stroke="${INK}" stroke-width="1.8"/><text y="3.5" text-anchor="middle" font-size="8" font-weight="900" fill="#fff" font-family="-apple-system,system-ui">human ok</text></g></g>`; }
+    g+=p; }
+
+  document.getElementById('scene').innerHTML=g;
+}
+
+// ---- detail panels: every line from the public repo, with its file:line
+const mini=(svg,vb='-40 -50 80 100')=>`<svg viewBox="${vb}" width="100%" height="100%">${svg}</svg>`;
+const sm=(svg,vb,w=40,h=60)=>mini(svg,vb).replace('<svg',`<svg width="${w}" height="${h}"`);
+const PANELS={
+ claude:{t:'CLAUDE.md',name:'the house rules',kind:'Prose · loads in every session, in every folder',
+  ic:()=>mini(`<rect x="-22" y="-28" width="44" height="54" rx="4" fill="#fff" stroke="${INK}" stroke-width="3"/><rect x="-22" y="-28" width="44" height="11" rx="3" fill="${PALE}" stroke="${INK}" stroke-width="2.4"/><path d="M-14,-8 h28 M-14,0 h20 M-14,8 h26 M-14,16 h16" stroke="${INK}" stroke-width="2" opacity=".6"/>`,'-34 -38 68 76'),
+  body:`<p>Keep it short: <b>rules here, facts in <code>knowledge/</code>, procedures in <code>skills/</code>, corrections in <code>memory/</code></b>. Current state only: when a rule changes, rewrite it; the history is in git.</p>
+   <p><b>Discovery rule:</b> before asking for context, read <code>knowledge/INDEX.md</code> and open only the file you need. When two sources disagree: <b>memory &gt; knowledge &gt; anything older</b>, and fix the loser in the same turn.</p>`,
+  nums:['<b>80</b> lines','<b>6</b> sections: discovery · how we work · pull requests · agents · writing for people · safety'],
+  src:'CLAUDE.md:3-4, 8, 14 · sections at :6 :22 :37 :46 :61 :67 · wc -l = 80'},
+ agents:{t:'agents/',name:'five agents, one craft each',kind:'Models · round · the hat letter is the model',
+  ic:()=>mini(agent(0,-6,0,{hat:'O',prop:'hammer',s:1.4}),'-40 -46 84 96'),
+  body:`<div class="gl">
+   <div>${sm(agent(0,-6,0,{hat:'O',prop:'wrench',s:0.9}),'-28 -36 64 80')}<span><b>builder</b> · Opus: a change already decided, one sentence of scope. Writes it, tests it, opens the PR, stops at merge-ready.</span></div>
+   <div>${sm(agent(0,-6,0,{hat:'O',prop:'hammer',s:0.9}),'-28 -36 64 80')}<span><b>breaker</b> · Opus: before, "is this real, what's the smallest version?" After, adversarial review and the cold review. Read-only.</span></div>
+   <div>${sm(agent(0,-6,0,{hat:'S',prop:'cards',s:0.9}),'-28 -36 64 80')}<span><b>organizer</b> · Sonnet: files a fact, sweeps a store for stale lines, drafts tracking cards from what really happened. Draft-only.</span></div>
+   <div>${sm(agent(0,-6,0,{hat:'O',prop:'glass',s:0.9}),'-28 -36 64 80')}<span><b>navigator</b> · Opus: how a system you don't own works, with citations.</span></div>
+   <div>${sm(worker(0,-6,0,{hat:'H',s:0.9,pose:'read'}),'-28 -36 64 80')}<span><b>skimmer</b> · Haiku: never alone. Up to 10 at once sort a big list with one yes/no question; the agent that sent them judges.</span></div>
+  </div>
+  <p>Agents are <b>born restricted</b> (read-only or draft-only) and earn permissions. Every dispatch ends with <b>Done = …</b>: what finished looks like.</p>`,
+  nums:[],src:'CLAUDE.md:50-58 · model: agents/builder.md:11 breaker.md:13 organizer.md:11 navigator.md:12 skimmer.md:10'},
+ hooks:{t:'hooks/',name:'three guards',kind:'Code · square · they run before a tool call',
+  ic:()=>mini(bot(0,0,0,{s:1.4}),'-40 -56 80 100'),
+  def:'Rules are written twice: in prose, and as a hook where it matters. <b>Prose explains, a hook enforces.</b>',
+  body:`<div class="gl" style="grid-template-columns:1fr">
+   <div>${sm(bot(0,0,0,{s:0.8}),'-30 -54 60 90')}<span><b>gh-guard.sh</b> (before every shell command): no merge without a human approval, no merge through the API or an alias, no push straight to main in your org's repos, no review request through GitHub's reviewer field.</span></div>
+   <div>${sm(bot(0,0,0,{s:0.8,band:false}),'-30 -54 60 90')}<span><b>pkill-guard.py</b> (before every shell command): stops one session killing other sessions' processes. It refuses <code>pkill -f</code> and <code>killall</code>, which kill by name across the machine.</span></div>
+   <div>${sm(bot(0,0,0,{s:0.8,band:false}),'-30 -54 60 90')}<span><b>workflow-guard.py</b> (before any workflow): asks before every multi-agent workflow, after one burned a 5-hour usage limit in about 30 minutes.</span></div>
+  </div><p class="small">A hook is syntax-checked before saving: a broken hook can block every tool.</p>`,
+  nums:[],src:'README "The ideas" #3 and "5. Hooks" · hooks/pkill-guard.py:2 · hooks/workflow-guard.py:3-6 · settings.example.json · CLAUDE.md:79-80'},
+ memory:{t:'memory/',name:'habits, one per file',kind:'Prose · loads as auto-memory',
+  ic:()=>mini(pinboard(-30,-26,5,20,{w:11,h:9,gap:2.5}),'-38 -34 76 68'),
+  def:'<b>habit</b> = one rule per file: the rule, the incident that taught it, <b>why</b>, and <b>how to apply it</b>.',
+  body:`<p>The index, <code>MEMORY.md</code>, has one short line per habit in 8 groups: reviewing · sending a cold agent · testing · approaching a change · test the instrument · writing for humans · working with agents · guards and safety.</p>
+   <p>If you just want one thing from the repo, it's this file.</p>`,
+  nums:['<b>35</b> habits','index: <b>55</b> lines, <b>~5 KB</b>','<b>8</b> groups'],
+  src:'memory/MEMORY.md:3, 6-51 · README "How to use this repo" · ls memory/feedback_* = 35'},
+ knowledge:{t:'knowledge/',name:'reference notes',kind:'Prose · INDEX.md first, then only the file you need',
+  ic:()=>mini(books(-26,20,4),'-38 -34 76 68'),
+  def:'A note records <b>the trap, not just the fact</b>: what breaks, how you notice, what to do.',
+  body:`<div class="gl" style="grid-template-columns:1fr">
+   <div><span><b>lessons.md</b>: patterns that stay true with any tool, each with the tell that you are in it.</span></div>
+   <div><span><b>github-pr-review.md</b>: reviewing a PR, or reading what a bot reviewer said about one.</span></div>
+   <div><span><b>security.md</b>: anything that touches a secret, a hook, a shared database, or a tool that can send something to other people.</span></div>
+  </div>`,
+  nums:['<b>3</b> notes','+ <b>INDEX.md</b>, read first'],
+  src:'knowledge/INDEX.md:3, 7-9, 11-12 · README folder table, knowledge row · ls knowledge = 4 files'},
+ skills:{t:'skills/',name:'two recipes',kind:'Procedures · one folder each',
+  ic:()=>mini(recipe(-34,-24,'pr-review…',-3,68)+recipe(-30,-2,'see-the…',2,68),'-40 -34 80 68'),
+  body:`<div class="gl" style="grid-template-columns:1fr">
+   <div><span><b>pr-review-loop</b>: an automated reviewer (CodeRabbit) and a subagent reviewer, looped until both are green, then a cold review last, then a human reads and merges.</span></div>
+   <div><span><b>see-the-data</b>: to understand some data once, ask Claude for one self-contained HTML page instead of building a dashboard.</span></div>
+  </div>`,
+  nums:[],src:'skills/pr-review-loop/SKILL.md:3-6 · skills/see-the-data/SKILL.md:3-6 · README folder table, skills row'},
+ check1:{t:'check 1',name:'no length cap on a review',kind:'breaker · Opus · read-only',
+  ic:()=>mini(agent(-8,-6,0,{hat:'O',prop:'hammer',s:1.3}),'-40 -46 84 96'),
+  body:`<p><code>breaker</code> reports <b>every finding, ordered by damage</b>: data and money first, then what breaks for a reader, then style. Brevity is for the verdict line, never for the list: <b>a finding cut for length is a finding nobody fixes</b>.</p>
+   <p>If a word budget or a Stop hook would trim the report, the review is exempt.</p>`,
+  nums:[],src:'agents/breaker.md:113-116 · README "4. Reviewers", reviews have no length cap'},
+ check2:{t:'check 2',name:'the memory index loads whole',kind:'MEMORY.md · measured on the repo',
+  ic:()=>mini(`<path d="M-34,-22 h68" stroke="${INK}" stroke-width="3" stroke-dasharray="7 5"/><rect x="-22" y="-8" width="44" height="34" rx="3" fill="#fff" stroke="${INK}" stroke-width="2.6"/><rect x="-22" y="-8" width="44" height="8" rx="2" fill="${PALE}" stroke="${INK}" stroke-width="2"/><path d="M-16,8 h24 M-16,15 h18" stroke="${INK}" stroke-width="1.8" opacity=".6"/>`,'-38 -34 76 68'),
+  body:`<p>Claude Code reads <code>MEMORY.md</code> up to a size limit and <b>silently drops the rest</b>, so a rule below the cut is a rule nobody follows.</p>
+   <p>So: one short line per memory, <b>well under 200 lines and ~20 KB</b>. Long lessons go to <code>knowledge/lessons.md</code>, never into the index. <b>A new index line pays with an old one</b>: move one into its habit file, or say none can move.</p>`,
+  nums:['index: <b>55</b> lines','<b>5,331</b> bytes (~5 KB)','budget: <b>200</b> lines · <b>~20 KB</b>'],
+  src:'CLAUDE.md:16-20 · README "6. Memory that loads whole" · wc -lc memory/MEMORY.md = 55 lines, 5331 bytes'},
+ check3:{t:'check 3',name:'a reviewer that didn\'t write the code',kind:'In this order',
+  ic:()=>mini(rabbit(-14,-4,0,{s:1})+agent(16,-4,0,{hat:'O',prop:'jar',s:1}),'-40 -46 84 96'),
+  body:`<ol><li><b>CodeRabbit + <code>breaker</code></b>, looped until both are green on the current version of the change.</li>
+   <li><b>A cold review in Opus</b>: a fresh agent with only the PR number. It runs the tests once; on a risky change it plants 10–20 small bugs ("mutants") on the lines that changed. A mutant the tests don't catch is a test that wasn't checking anything.</li>
+   <li><b>A person reads it and merges.</b></li></ol>
+   <p class="small">A green check is not a review: read what the reviewer actually said about the current version.</p>`,
+  nums:[],src:'CLAUDE.md:39-41 · README "The ideas" #2 and "4. Reviewers" · skills/pr-review-loop/SKILL.md:110-131'},
+ check4:{t:'check 4',name:'a guard on the way to main',kind:'gh-guard.sh · before every shell command',
+  ic:()=>mini(door(-6,-14,40,46,'main',0.15)+bot(-22,10,0,{s:0.8}),'-44 -54 88 100'),
+  body:`<p>It blocks: <b>gh pr merge without a human approval</b> (a bot's approval, or one later changed to "changes requested", doesn't count) · merging through the API or an alias · <b>git push straight to main in your org's repos</b> · review requests through GitHub's reviewer field.</p>
+   <p>When it can't tell, it <b>asks you</b>. Branch protection on GitHub is the real lock; the hook is the seat belt.</p>`,
+  nums:['<b>25</b> test cases, no network','<b>3 of 3</b> runs pass','a planted bug turns it <b>red</b> (24 of 25)'],
+  src:'README "5. Hooks" · hooks/gh-guard.sh:2-10 · hooks/tests/gh-guard-test.sh'},
+};
+function openPanel(id){const p=PANELS[id];if(!p)return;
+  document.getElementById('pbody').innerHTML=`<div class="top"><div class="ic tone">${p.ic()}</div><div style="flex:1">
+    <h2><code>${p.t}</code>${p.name}</h2><div class="kind">${p.kind}</div>
+    ${p.def?`<div class="def">${p.def}</div>`:''}${p.body}
+    ${p.nums.length?`<div class="nums">${p.nums.map(n=>`<span>${n}</span>`).join('')}</div>`:''}
+    <div class="src">source (in the repo): ${p.src}</div></div></div>`;
+  document.getElementById('veil').style.display='block';document.getElementById('panel').style.display='block';}
+function closePanel(){document.getElementById('veil').style.display='none';document.getElementById('panel').style.display='none';}
+document.querySelectorAll('[data-p]').forEach(el=>el.addEventListener('click',()=>openPanel(el.dataset.p)));
+document.getElementById('px').onclick=closePanel;document.getElementById('veil').onclick=closePanel;
+addEventListener('keydown',e=>{if(e.key==='Escape')closePanel();});
+
+const q=new URLSearchParams(location.search);
+if(q.has('still')) document.getElementById('stage').classList.add('still');
+window.__seek=render; window.__ready=true;
+if(q.has('panel')) openPanel(q.get('panel'));
+if(q.has('capture')) render(q.has('t')?parseFloat(q.get('t')):0); else KIT.run(render,L);
+</script>
+</body>
+</html>
