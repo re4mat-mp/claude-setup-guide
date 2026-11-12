@@ -5,6 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Open the box: a Claude Code setup, mistakes included</title>
 <meta name="description" content="An interactive picture of a Claude Code setup: five agents with one craft each, three guard hooks, a memory that loads whole, and four checks before anything reaches main. Click any part for the detail.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://re4mat-mp.github.io/claude-setup-guide/">
+<meta property="og:title" content="Open the box: a Claude Code setup, mistakes included">
+<meta property="og:image" content="https://re4mat-mp.github.io/claude-setup-guide/og.png">
+<meta property="og:image:width" content="2560">
+<meta property="og:image:height" content="1440">
+<meta name="twitter:card" content="summary_large_image">
 <script src="kit.js"></script>
 <script src="kit_setup.js"></script>
 <style>
@@ -80,7 +87,7 @@
   <div class="chip" id="c-agents" data-p="agents" style="left:458px;top:236px;width:96px"><div class="big"><span id="n-agents">5</span><span class="plus" style="position:relative;display:inline-block;margin-left:7px;vertical-align:6px">+</span></div><b>agents</b>, one craft each</div>
   <div class="chip" id="c-hooks" data-p="hooks" style="left:458px;top:330px;width:96px"><div class="big"><span id="n-hooks">3</span><span class="plus" style="position:relative;display:inline-block;margin-left:7px;vertical-align:6px">+</span></div><b>guard hooks</b>: prose explains, a hook enforces</div>
   <div class="chip" id="c-memory" data-p="memory" style="left:44px;top:512px;width:120px"><div class="big"><span id="n-memory">35</span><span class="plus" style="position:relative;display:inline-block;margin-left:7px;vertical-align:6px">+</span></div><b>habits</b> in memory/, one per file</div>
-  <div class="chip" id="c-knowledge" data-p="knowledge" style="left:206px;top:512px;width:120px"><div class="big"><span id="n-knowledge">3</span><span class="plus" style="position:relative;display:inline-block;margin-left:7px;vertical-align:6px">+</span></div><b>notes</b> in knowledge/, INDEX.md first</div>
+  <div class="chip" id="c-knowledge" data-p="knowledge" style="left:206px;top:512px;width:120px"><div class="big"><span id="n-knowledge">4</span><span class="plus" style="position:relative;display:inline-block;margin-left:7px;vertical-align:6px">+</span></div><b>notes</b> in knowledge/, INDEX.md first</div>
   <div class="chip" id="c-skills" data-p="skills" style="left:362px;top:512px;width:120px"><div class="big"><span id="n-skills">2</span><span class="plus" style="position:relative;display:inline-block;margin-left:7px;vertical-align:6px">+</span></div><b>skills</b>, one folder each</div>
 
   <!-- right: four panels -->
@@ -114,13 +121,13 @@
     <li><b><code>CLAUDE.md</code> loads in every session.</b> Rules live there, facts in <code>knowledge/</code>, procedures in <code>skills/</code>, corrections in <code>memory/</code>.</li>
     <li><b>5 agents, one craft each:</b> builder, breaker, organizer, navigator and skimmer.</li>
     <li><b>3 guard hooks</b>, because prose explains and a hook enforces: <code>gh-guard.sh</code>, <code>pkill-guard.py</code>, <code>workflow-guard.py</code>.</li>
-    <li><b>35 habits</b> in <code>memory/</code>, one per file; <b>3 notes</b> in <code>knowledge/</code>, with <code>INDEX.md</code> read first; <b>2 skills</b>: <code>pr-review-loop</code> and <code>see-the-data</code>.</li>
+    <li><b>35 habits</b> in <code>memory/</code>, one per file; <b>4 notes</b> in <code>knowledge/</code>, with <code>INDEX.md</code> read first; <b>2 skills</b>: <code>pr-review-loop</code> and <code>see-the-data</code>.</li>
     <li><b>Check 1, no length cap on a review:</b> the breaker reports every finding, ordered by damage. Brevity is for the verdict line only.</li>
     <li><b>Check 2, the memory index loads whole:</b> <code>MEMORY.md</code> is 55 lines, about 5 KB, well under the budget of 200 lines and ~20 KB. A new line pays with an old one.</li>
     <li><b>Check 3, a reviewer that didn't write the code:</b> a bot reviewer and the breaker loop until both are green, then a cold review in Opus runs the tests once and, on a risky change, plants 10–20 small bugs. Then a person reads it and merges.</li>
     <li><b>Check 4, a guard on the way to main:</b> <code>gh-guard.sh</code> blocks a merge without a human approval, merging through the API, and a push straight to main in your org's repos. Its 25 tests pass.</li>
   </ol>
-  <nav><a href="https://github.com/re4mat-mp/claude-setup-guide">The guide on GitHub (README)</a><a href="factory/">The factory: how a heavy job runs →</a></nav>
+  <nav><a href="https://re4mat-mp.github.io/#pieces">← All the pieces</a><a href="https://github.com/re4mat-mp/claude-setup-guide">The guide on GitHub (README)</a><a href="factory/">The factory: how a heavy job runs →</a></nav>
 </section>
 
 <script>
@@ -186,7 +193,7 @@ function render(t){
   g+=svgPop(Q.knowledge,270,470,books(244,490,4));
   g+=svgPop(Q.skills,430,460,recipe(352,436,'pr-review-loop',-1,150)+recipe(356,470,'see-the-data',1,150));
   // chips: ride in with their group, then count up
-  const CH={agents:5,hooks:3,memory:35,knowledge:3,skills:2};
+  const CH={agents:5,hooks:3,memory:35,knowledge:4,skills:2};
   for(const k in CH){ const el=document.getElementById('c-'+k); const q=Q[k];
     el.style.opacity=q.o; el.style.transform=`translate(${r2(q.dx)}px,${r2(q.dy)}px) scale(${r2(q.s*100)/100})`;
     const c=prog(t,T.pops[k]+0.2,0.8);
@@ -306,7 +313,7 @@ const PANELS={
    <div><span><b>github-pr-review.md</b>: reviewing a PR, or reading what a bot reviewer said about one.</span></div>
    <div><span><b>security.md</b>: anything that touches a secret, a hook, a shared database, or a tool that can send something to other people.</span></div>
   </div>`,
-  nums:['<b>3</b> notes','+ <b>INDEX.md</b>, read first'],
+  nums:['<b>4</b> notes','+ <b>INDEX.md</b>, read first'],
   src:'knowledge/INDEX.md:3, 7-9, 11-12 · README folder table, knowledge row · ls knowledge = 4 files'},
  skills:{t:'skills/',name:'two recipes',kind:'Procedures · one folder each',
   ic:()=>mini(recipe(-34,-24,'pr-review…',-3,68)+recipe(-30,-2,'see-the…',2,68),'-40 -34 80 68'),

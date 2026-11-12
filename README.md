@@ -1,6 +1,6 @@
 # I don't use one Claude. I use a small team.
 
-Here's the setup, mistakes included.
+Here's my Claude Code setup, mistakes included.
 
 [![Open the box: inside, a team you can brief; on top, four checks](assets/open-the-box.gif)](https://re4mat-mp.github.io/claude-setup-guide/)
 
