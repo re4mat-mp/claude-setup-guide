@@ -13,7 +13,7 @@ is mine and works for anyone. Here's the cut, so you know what you're looking at
 | `hooks/` (3) + tests | The guards I trust most. The merge guard has a 25-case test suite that runs offline, so you can see it work before wiring anything in |
 | `skills/pr-review-loop`, `skills/see-the-data` | The two procedures that don't depend on any particular system |
 | `memory/` (35 habits + index) | The most reusable part: one habit per file, each with the case that taught it |
-| `knowledge/` (lessons, PR review, security) | Patterns that stay true with any tool |
+| `knowledge/` (lessons, PR review, security, organizing your files) | Patterns that stay true with any tool, and how to keep your own notes in order |
 | `assets/open-the-box.gif` | The animation at the top of the README: every count and name on it is in this repo |
 | `docs/` | The pages GitHub Pages serves: the interactive "Open the box" and "The factory". Each has a plain-text version for people and for AI |
 | The factory's real job | Shown as a pattern with an invented job and invented numbers. Its real code and data stay private |

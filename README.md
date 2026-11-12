@@ -81,7 +81,7 @@ bot's approval count) and the test suite goes red. That's how you know the tests
 | [`hooks/`](hooks/) | `~/.claude/hooks/` | Three guard hooks, and a 25-case offline test suite for the merge guard |
 | [`settings.example.json`](settings.example.json) | merge into `~/.claude/settings.json` | Only the wiring for the three hooks |
 | [`memory/`](memory/) | `~/.claude/projects/<project>/memory/` | Habits, one per file, with an index |
-| [`knowledge/`](knowledge/) | `~/.claude/knowledge/` | Lessons, PR review, security. [`INDEX.md`](knowledge/INDEX.md) first |
+| [`knowledge/`](knowledge/) | `~/.claude/knowledge/` | Lessons, PR review, security, and [how to organize your files and close the day](knowledge/organize-your-files.md). [`INDEX.md`](knowledge/INDEX.md) first |
 
 Paths are written as `~/...`. Nothing is tied to my machine. What I left out, and why: [`CUT.md`](CUT.md).
 
